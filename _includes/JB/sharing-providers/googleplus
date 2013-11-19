@@ -18,4 +18,4 @@
     fjs.parentNode.insertBefore(js, fjs);
 }(document, 'script', 'facebook-jssdk'));</script>
  
-<div class="fb-like" data-href="{{ BASE_PATH }}{{ page.url }}" data-layout="standard" data-action="like" data-show-faces="true" data-share="true"></div>
+<div class="fb-like" data-href="http://cwndmiao.github.io{{ page.url }}" data-layout="standard" data-action="like" data-show-faces="true" data-share="true"></div>
