@@ -8,7 +8,12 @@ tagline: "do {} white (0)"
 
 <ul class="posts">
   {% for post in site.posts %}
-    <li><span>{{ post.date | date_to_string }}</span> &raquo; <a href="{{ BASE_PATH }}{{ post.url }}">{{ post.title }}</a></li>
+    <li>
+    <div style="padding:5pt">
+    <span style="font-size:15pt">{{ post.date | date_to_string }} &nbsp;&raquo;&nbsp;</span> <a href="{{ BASE_PATH }}{{ post.url }}" style="font-size:15pt">{{ post.title }}</a>
+    </div>
+    </li>
   {% endfor %}
 </ul>
+
 
