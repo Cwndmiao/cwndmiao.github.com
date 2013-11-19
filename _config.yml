@@ -117,21 +117,21 @@ JB :
   sharing :
     provider : google
     twitter :
-        size : small
+        size : 
         via :
         count :
     facebook :
-        appid : 205602882797935
-        layout : button_count
+        appid : 
+        layout : 
         font :
-        faces : false
-        width : 90
+        faces : 
+        width : 
     googleplus :
-        size : medium
+        size : standard
         width :
         annotation : 
     linkedin :
-        counter : right
+        counter : 
     
   # Settings for all other include helpers can be defined by creating 
   # a hash with key named for the given helper. ex:
