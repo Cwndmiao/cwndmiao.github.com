@@ -1,0 +1,315 @@
+---
+layout: post
+title: "Closure in C# and C"
+description: ""
+category: "Programming Language"
+tags: [closure, gcc internal]
+---
+{% include JB/setup %}
+
+#什么是closure
+
+开始之前，先要介绍下什么是closure（闭包）。[这篇文章](http://csharpindepth.com/Articles/Chapter5/Closures.aspx)中有一个对closure比较直观的描述。
+
+>To put it very simply, closures allow you to encapsulate some behaviour, pass it around like any other object, and still have access to the context in which they were first declared. This allows you to separate out control structures, logical operators etc from the details of how they're going to be used. The ability to access the original context is what separates closures from normal objects, although closure implementations typically achieve this using normal objects and compiler trickery.
+
+举个简单的栗子，这里有一个存放着很多string的list，现在需要将其中所有length小于等于4的string检索出来，正常的写法是这样的。
+
+{% highlight c# %}
+static void Main()
+{
+    List<string> sample = ...;
+    List<string> ret = new List<string>();
+    foreach (string item in sample)
+    {
+        if (item.Length <= 4)
+            ret.Add(item);
+    }
+    return ret;
+}
+{% endhighlight %}
+
+这样写实在是不雅观，代码中充斥着这样的for循环，采用c#的delegate我们可以这么写。
+
+{% highlight c# %}
+static bool MatchFourLetterOrFewer(string item)
+{
+    return item.Length <= 4;
+}
+
+static void Main()
+{
+    Predicate<string> predicate = new Predicate<string>(MatchFourLetterOrFewer);
+    List<string> shortWords = ListUtil.Filter(sample, predicate);
+    ListUtil.Dump(shortWords);
+}
+{% endhighlight %}
+
+这样写比原来要好一些，因为把具体的filter操作封装到了一个函数里面（这个做法有点像STL中的functor）。然而，为了实现这个filter，我们的代价是多了一个函数，那有没有一个更优美的做法呢？采用anonymous function我们可以这么写。
+
+{% highlight c# %}
+static void Main()
+{
+    Predicate<string> predicate = delegate (string item) { return item.Length <= 4; };
+    List<string> shortWords = ListUtil.Filter(sample, predicate);
+    ListUtil.Dump(shortWords);
+}
+{% endhighlight %}
+
+更简洁地，采用lamda expression，甚至可以这么写。
+
+{% highlight c# %}
+static void Main()
+{
+    Predicate<string> predicate = item => item.Length <= 4;
+    List<string> shortWords = ListUtil.Filter(sample, predicate);
+    ListUtil.Dump(shortWords);
+}
+{% endhighlight %}
+
+现在代码看上去应该很简洁了吧。嗯，是的。
+
+考虑一个复杂一点的需求，过滤string的长度标准可变，取决于用户的输入，比如，用户需要得到长度小于等于n的string。
+
+采用delegate的第一种写法就得变成这样。
+
+{% highlight c# %}
+public class VariableLengthMatcher
+{
+    int maxLength;
+
+    public VariableLengthMatcher(int maxLength)
+    {
+        this.maxLength = maxLength;
+    }
+
+    /// <summary>
+    /// Method used as the action of the delegate
+    /// </summary>
+    public bool Match(string item)
+    {
+        return item.Length <= maxLength;
+    }
+}
+
+static void Main()
+{
+    Console.Write("Maximum length of string to include? ");
+    int maxLength = int.Parse(Console.ReadLine());
+
+    VariableLengthMatcher matcher = new VariableLengthMatcher(maxLength);
+    Predicate<string> predicate = matcher.Match;
+    IList<string> shortWords = ListUtil.Filter(SampleData.Words, predicate);
+    ListUtil.Dump(shortWords);
+}
+{% endhighlight %}
+
+采用anonymous function和lamda expression的写法则可以这样改。
+
+{% highlight c# %}
+static void Main()
+{
+    Console.Write("Maximum length of string to include? ");
+    int maxLength = int.Parse(Console.ReadLine());
+    
+    Predicate<string> predicate = delegate (string item) { return item.Length <= maxLength; };
+    List<string> shortWords = ListUtil.Filter(sample, predicate);
+    ListUtil.Dump(shortWords);
+}
+{% endhighlight %}
+
+{% highlight c# %}
+static void Main()
+{
+    Console.Write("Maximum length of string to include? ");
+    int maxLength = int.Parse(Console.ReadLine());
+    
+    Predicate<string> predicate = item => item.Length <= maxLength;
+    List<string> shortWords = ListUtil.Filter(sample, predicate);
+    ListUtil.Dump(shortWords);
+}
+{% endhighlight %}
+
+以上便是利用了closure，包装一些行为使之可以像object一样传递的同时还能访问周围的context。
+
+#C中的closure
+
+考虑如下的一段代码。
+
+{% highlight c %}
+#include <stdio.h>
+#include <assert.h>
+
+FILE *log_func_call;
+
+typedef int (*func_t)(int arg);
+
+int foo(int a) {
+    return a + 1;
+}
+
+func_t create_wrap_function(func_t f) {
+    int wrapped(int arg) {
+        // call original function
+        int val = f(arg);
+        fprintf(log_func_call, "arg: %d ret: %d", arg, val);
+        return val;
+    }
+    return wrapped;
+}
+
+int main(int argc, char* argv[]) {
+    assert(log_func_call = fopen("log_func_call", "w"));
+    func_t bar = create_wrap_function(foo);
+    printf("%d\n", bar(2));
+
+    return 0;
+}
+{% endhighlight %}
+
+这段代码是可以编译通过的，意思是，我需要introspect某个函数（这里是foo），每次这个函数被调用时，将其调用参数和返回值记录到一个文件里。这段代码里加入了一个名为create_wrap_function的新函数，里面包含一个叫做wrapped的[nested function](http://gcc.gnu.org/onlinedocs/gcc/Nested-Functions.html),在这个wrapped里面记录下函数的调用参数和返回值，然后直接返回这个nested function。之所以说这是一个closure是因为wrapped访问了create_wrap_function中的context（函数参数f）。
+
+对于C#我们很难分析其closure的实现，但是对于C来说，还是有可能的。下面我们就来分析一下gcc对于这个feature的实现。
+
+编译这段代码gcc ./wrapped_function.c -g -O0 -o wrapped_function，用nm查看其中的symbol，发现符号表中存在wrapped这个entry，且type为t，说明其相当于一个存在于text section的正常函数。
+
+    0000000000600bc0 A _edata
+    0000000000600bd0 A _end
+    000000000040079c T _fini
+    0000000000400470 T _init
+    00000000004004e0 T _start
+    000000000040050c t call_gmon_start
+    0000000000600bc0 b completed.6092
+    000000000040063a T create_wrap_function
+    0000000000600bb0 W data_start
+    0000000000400530 t deregister_tm_clones
+    00000000004005ec T foo
+                     U fopen@@GLIBC_2.2.5
+                     U fprintf@@GLIBC_2.2.5
+    00000000004005c0 t frame_dummy
+    0000000000600bc8 B log_func_call
+    000000000040067e T main
+                     U printf@@GLIBC_2.2.5
+    0000000000400560 t register_tm_clones
+    00000000004005fb t wrapped.2184              <=========
+
+照理来说，变量bar的值应该就等于wrapped这个符号的地址0x4005fb，可是真的是这样么？将bar的值打印出来，发现是形如0x7fff4a4e9878的一个值，竟然是一个栈上的地址！为什么会这样呢？在栈上的这段代码都做了些什么工作呢？
+
+由于这段代码在栈上，只能在运行的时候看到，于是我们祭出gdb，disassemble栈上的这个地址得到如下代码。
+
+    (gdb) p bar
+    $1 = (func_t) 0x7fffffffe348
+    (gdb) x/5i bar
+        0x7fffffffe348:      mov    $0x4005fb,%r11d
+        0x7fffffffe34e:      movabs $0x7fffffffe340,%r10
+        0x7fffffffe358:      rex.WB jmpq *%r11
+        0x7fffffffe35b:      nop
+        0x7fffffffe35c:      add    %al,(%rax)
+    (gdb) 
+
+可以看到这其实是一段trampoline code，第一条mov将wrapped的真正地址放到了r11当中，然后在第三条汇编用一个indirect jump跳转过去，那么第二条mov将一个绝对值（也是一个栈上的地址）放入r10中又是在做神马呢？继续看wrapped的反汇编。
+
+    (gdb) x/20i 0x4005fb
+        0x4005fb <wrapped>:  push   %rbp
+        0x4005fc <wrapped+1>:        mov    %rsp,%rbp
+        0x4005ff <wrapped+4>:        sub    $0x20,%rsp
+        0x400603 <wrapped+8>:        mov    %edi,-0x14(%rbp)
+        0x400606 <wrapped+11>:       mov    %r10,%rax                  <========
+        0x400609 <wrapped+14>:       mov    (%rax),%rax                <========
+        0x40060c <wrapped+17>:       mov    -0x14(%rbp),%edx
+        0x40060f <wrapped+20>:       mov    %edx,%edi
+        0x400611 <wrapped+22>:       callq  *%rax                      <========
+        0x400613 <wrapped+24>:       mov    %eax,-0x4(%rbp)
+        0x400616 <wrapped+27>:       mov    0x2005db(%rip),%rax        # 0x600bf8 <log_func_call>
+        0x40061d <wrapped+34>:       mov    -0x4(%rbp),%ecx
+        0x400620 <wrapped+37>:       mov    -0x14(%rbp),%edx
+        0x400623 <wrapped+40>:       mov    $0x4007e0,%esi
+        0x400628 <wrapped+45>:       mov    %rax,%rdi
+        0x40062b <wrapped+48>:       mov    $0x0,%eax
+        0x400630 <wrapped+53>:       callq  0x4004c0 <fprintf@plt>
+        0x400635 <wrapped+58>:       mov    -0x4(%rbp),%eax
+        0x400638 <wrapped+61>:       leaveq
+        0x400639 <wrapped+62>:       retq
+    (gdb) 
+
+可以看到wrapped将r10的内容拷到了rax当中，并解引用，随后indirect call跳转，很容易猜到这应该是create_wrap_function传入的参数f（也就是foo的地址），原来nested function是采用这样的方式来传递context的，栈帧型构大致如下。
+     
+    0x7fffffffe35b
+          |
+          |   old rbp
+    |_____|___________________|     <------ %%rbp(0x7fffffffe360)
+    |    \|/                  | 
+    |     ____________________|     
+    |_____|                   |
+    |  trampoline code        |
+    |  (mov, mov, jmp)        |
+    |_________________________|     <------ 0x7fffffffe348
+    |  context of wrapper     |
+    |_________________________|     <------ 0x7fffffffe340
+
+这么奇怪的栈帧是谁设置的呢，不难想到应该是create_wrap_function，继续看它的汇编。
+
+    (gdb) p create_wrap_function 
+    $2 = {func_t (func_t)} 0x40063a <create_wrap_function>
+    (gdb) x/18i 0x40063a
+        0x40063a <create_wrap_function>:     push   %rbp
+        0x40063b <create_wrap_function+1>:   mov    %rsp,%rbp
+        0x40063e <create_wrap_function+4>:   mov    %rdi,-0x28(%rbp)
+        0x400642 <create_wrap_function+8>:   mov    -0x28(%rbp),%rax
+        0x400646 <create_wrap_function+12>:  mov    %rax,-0x20(%rbp)
+        0x40064a <create_wrap_function+16>:  lea    -0x20(%rbp),%rax
+        0x40064e <create_wrap_function+20>:  add    $0x8,%rax
+        0x400652 <create_wrap_function+24>:  lea    -0x20(%rbp),%rdx
+        0x400656 <create_wrap_function+28>:  mov    $0x4005fb,%ecx
+        0x40065b <create_wrap_function+33>:  movw   $0xbb41,(%rax)
+        0x400660 <create_wrap_function+38>:  mov    %ecx,0x2(%rax)
+        0x400663 <create_wrap_function+41>:  movw   $0xba49,0x6(%rax)
+        0x400669 <create_wrap_function+47>:  mov    %rdx,0x8(%rax)
+        0x40066d <create_wrap_function+51>:  movl   $0x90e3ff49,0x10(%rax)
+        0x400674 <create_wrap_function+58>:  lea    -0x20(%rbp),%rax
+        0x400678 <create_wrap_function+62>:  add    $0x8,%rax
+        0x40067c <create_wrap_function+66>:  pop    %rbp
+        0x40067d <create_wrap_function+67>:  retq
+    (gdb)
+
+可以看到create_wrap_function在prologue后就将参数f保存到了-0x20(%rbp)处，接下来一串奇怪的mov指令就是在栈上构造trampoline code，最后返回trampoline code的地址，思路还是比较清晰的。
+
+gcc internal里面有一段对于[trampoline for nested function](http://gcc.gnu.org/onlinedocs/gccint/Trampolines.html#Trampolines)的介绍，可以作为参考。
+
+最后还有两个问题，一个是这些在栈上的精妙构造之后不会被破坏么？答案是肯定的，在调用bar之前加一个dummy function，不干别的，直接将一个比较大的局部变量清零，调用bar的时候就会segmentation fault。原因很明显，它将trampoline code抹掉了。。。这说明用gcc nested function实现的closure是不完善的。
+
+{% highlight c %}
+void dummy_function(void) {
+    char tmp[0x100];        
+    memset(tmp, 0, sizeof(tmp));
+}
+{% endhighlight %}
+
+第二个问题是，为什么栈上的代码可以执行呢，x86_64不是有禁止执行位（NX bit）么？
+
+答案是。。。还真可以执行。。。下图有真相。。。（正常进程的栈确实是不可执行的，出现这种情况难道是ld在链接的时候做了手脚？）
+
+    [20] 1J 21:51:21 testvm:~/test # ps -ef|grep wrap
+    root     49492 49232  0 21:50 pts/1    00:00:00 cgdb ./wrap-function
+    root     49493 49492  0 21:50 pts/3    00:00:00 gdb --nw --annotate=2 -x /root/.tgdb/a2_gdb_init ./wrap-function
+    root     49495 49493  0 21:50 pts/4    00:00:00 /root/test/wrap-function
+    root     49501 49232  0 21:51 pts/1    00:00:00 grep --colour wrap
+    1J 21:51:27 testvm:~/test # cat /proc/49495/maps 
+    00400000-00401000 r-xp 00000000 08:01 137681                             /root/test/wrap-function
+    00600000-00601000 rwxp 00000000 08:01 137681                             /root/test/wrap-function
+    00601000-00622000 rwxp 00000000 00:00 0                                  [heap]
+    7ffff7a53000-7ffff7bd3000 r-xp 00000000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+    7ffff7bd3000-7ffff7dd3000 ---p 00180000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+    7ffff7dd3000-7ffff7dd7000 r-xp 00180000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+    7ffff7dd7000-7ffff7dd8000 rwxp 00184000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+    7ffff7dd8000-7ffff7ddd000 rwxp 00000000 00:00 0 
+    7ffff7ddd000-7ffff7dfd000 r-xp 00000000 08:01 391702                     /lib/x86_64-linux-gnu/ld-2.13.so
+    7ffff7fe6000-7ffff7fe9000 rwxp 00000000 00:00 0 
+    7ffff7ff8000-7ffff7ffb000 rwxp 00000000 00:00 0 
+    7ffff7ffb000-7ffff7ffc000 r-xp 00000000 00:00 0                          [vdso]
+    7ffff7ffc000-7ffff7ffd000 r-xp 0001f000 08:01 391702                     /lib/x86_64-linux-gnu/ld-2.13.so
+    7ffff7ffd000-7ffff7ffe000 rwxp 00020000 08:01 391702                     /lib/x86_64-linux-gnu/ld-2.13.so
+    7ffff7ffe000-7ffff7fff000 rwxp 00000000 00:00 0 
+    7ffffffde000-7ffffffff000 rwxp 00000000 00:00 0                          [stack]
+    ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+

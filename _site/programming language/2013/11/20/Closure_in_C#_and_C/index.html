@@ -1,0 +1,502 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Closure in C# and C</title>
+    <meta name="description" content="">
+    <meta name="author" content="Cwndmiao">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="/assets/themes/twitter/css/1.4.0/bootstrap.css" rel="stylesheet">
+    <link href="/assets/themes/twitter/css/style.css?body=1" rel="stylesheet" type="text/css" media="all">
+    <link href="/assets/themes/twitter/css/pygments.css" rel="stylesheet" type="text/css" media="all">
+
+    <!-- Le fav and touch icons -->
+  <!-- Update these with your own images
+    <link rel="shortcut icon" href="images/favicon.ico">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="images/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="images/apple-touch-icon-114x114.png">
+  -->
+  </head>
+
+  <body>
+
+    <div class="topbar">
+      <div class="fill">
+        <div class="container">
+          <a class="brand" href="/">消逝的风</a>
+          <ul class="nav">
+            
+            
+            
+
+
+  
+    
+      
+      	
+      	<li><a href="/categories.html">Categories</a></li>
+      	
+      
+    
+  
+    
+      
+      	
+      	<li><a href="/tags.html">Tags</a></li>
+      	
+      
+    
+  
+    
+      
+    
+  
+    
+      
+    
+  
+    
+      
+    
+  
+    
+      
+      	
+      	<li><a href="/pages.html">Pages</a></li>
+      	
+      
+    
+  
+    
+      
+      	
+      	<li><a href="/archive.html">Archive</a></li>
+      	
+      
+    
+  
+    
+      
+    
+  
+
+
+
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <div class="content">
+        
+<div class="page-header">
+  <h1>Closure in C# and C <small></small></h1>
+</div>
+
+<div class="row">
+  <div class="span10">
+    <h1 id='closure'>什么是closure</h1>
+
+<p>开始之前，先要介绍下什么是closure（闭包）。<a href='http://csharpindepth.com/Articles/Chapter5/Closures.aspx'>这篇文章</a>中有一个对closure比较直观的描述。</p>
+
+<blockquote>
+<p>To put it very simply, closures allow you to encapsulate some behaviour, pass it around like any other object, and still have access to the context in which they were first declared. This allows you to separate out control structures, logical operators etc from the details of how they&#8217;re going to be used. The ability to access the original context is what separates closures from normal objects, although closure implementations typically achieve this using normal objects and compiler trickery.</p>
+</blockquote>
+
+<p>举个简单的栗子，这里有一个存放着很多string的list，现在需要将其中所有length小于等于4的string检索出来，正常的写法是这样的。</p>
+<div class='highlight'><pre><code class='c#'><span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>sample</span> <span class='p'>=</span> <span class='p'>...;</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>ret</span> <span class='p'>=</span> <span class='k'>new</span> <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;();</span>
+    <span class='k'>foreach</span> <span class='p'>(</span><span class='kt'>string</span> <span class='n'>item</span> <span class='k'>in</span> <span class='n'>sample</span><span class='p'>)</span>
+    <span class='p'>{</span>
+        <span class='k'>if</span> <span class='p'>(</span><span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='m'>4</span><span class='p'>)</span>
+            <span class='n'>ret</span><span class='p'>.</span><span class='n'>Add</span><span class='p'>(</span><span class='n'>item</span><span class='p'>);</span>
+    <span class='p'>}</span>
+    <span class='k'>return</span> <span class='n'>ret</span><span class='p'>;</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>这样写实在是不雅观，代码中充斥着这样的for循环，采用c#的delegate我们可以这么写。</p>
+<div class='highlight'><pre><code class='c#'><span class='k'>static</span> <span class='kt'>bool</span> <span class='nf'>MatchFourLetterOrFewer</span><span class='p'>(</span><span class='kt'>string</span> <span class='n'>item</span><span class='p'>)</span>
+<span class='p'>{</span>
+    <span class='k'>return</span> <span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='m'>4</span><span class='p'>;</span>
+<span class='p'>}</span>
+
+<span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>predicate</span> <span class='p'>=</span> <span class='k'>new</span> <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;(</span><span class='n'>MatchFourLetterOrFewer</span><span class='p'>);</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>shortWords</span> <span class='p'>=</span> <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Filter</span><span class='p'>(</span><span class='n'>sample</span><span class='p'>,</span> <span class='n'>predicate</span><span class='p'>);</span>
+    <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Dump</span><span class='p'>(</span><span class='n'>shortWords</span><span class='p'>);</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>这样写比原来要好一些，因为把具体的filter操作封装到了一个函数里面（这个做法有点像STL中的functor）。然而，为了实现这个filter，我们的代价是多了一个函数，那有没有一个更优美的做法呢？采用anonymous function我们可以这么写。</p>
+<div class='highlight'><pre><code class='c#'><span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>predicate</span> <span class='p'>=</span> <span class='k'>delegate</span> <span class='p'>(</span><span class='kt'>string</span> <span class='n'>item</span><span class='p'>)</span> <span class='p'>{</span> <span class='k'>return</span> <span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='m'>4</span><span class='p'>;</span> <span class='p'>};</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>shortWords</span> <span class='p'>=</span> <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Filter</span><span class='p'>(</span><span class='n'>sample</span><span class='p'>,</span> <span class='n'>predicate</span><span class='p'>);</span>
+    <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Dump</span><span class='p'>(</span><span class='n'>shortWords</span><span class='p'>);</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>更简洁地，采用lamda expression，甚至可以这么写。</p>
+<div class='highlight'><pre><code class='c#'><span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>predicate</span> <span class='p'>=</span> <span class='n'>item</span> <span class='p'>=&gt;</span> <span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='m'>4</span><span class='p'>;</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>shortWords</span> <span class='p'>=</span> <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Filter</span><span class='p'>(</span><span class='n'>sample</span><span class='p'>,</span> <span class='n'>predicate</span><span class='p'>);</span>
+    <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Dump</span><span class='p'>(</span><span class='n'>shortWords</span><span class='p'>);</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>现在代码看上去应该很简洁了吧。嗯，是的。</p>
+
+<p>考虑一个复杂一点的需求，过滤string的长度标准可变，取决于用户的输入，比如，用户需要得到长度小于等于n的string。</p>
+
+<p>采用delegate的第一种写法就得变成这样。</p>
+<div class='highlight'><pre><code class='c#'><span class='k'>public</span> <span class='k'>class</span> <span class='nc'>VariableLengthMatcher</span>
+<span class='p'>{</span>
+    <span class='kt'>int</span> <span class='n'>maxLength</span><span class='p'>;</span>
+
+    <span class='k'>public</span> <span class='nf'>VariableLengthMatcher</span><span class='p'>(</span><span class='kt'>int</span> <span class='n'>maxLength</span><span class='p'>)</span>
+    <span class='p'>{</span>
+        <span class='k'>this</span><span class='p'>.</span><span class='n'>maxLength</span> <span class='p'>=</span> <span class='n'>maxLength</span><span class='p'>;</span>
+    <span class='p'>}</span>
+
+    <span class='c1'>/// &lt;summary&gt;</span>
+    <span class='c1'>/// Method used as the action of the delegate</span>
+    <span class='c1'>/// &lt;/summary&gt;</span>
+    <span class='k'>public</span> <span class='kt'>bool</span> <span class='nf'>Match</span><span class='p'>(</span><span class='kt'>string</span> <span class='n'>item</span><span class='p'>)</span>
+    <span class='p'>{</span>
+        <span class='k'>return</span> <span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='n'>maxLength</span><span class='p'>;</span>
+    <span class='p'>}</span>
+<span class='p'>}</span>
+
+<span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>Console</span><span class='p'>.</span><span class='n'>Write</span><span class='p'>(</span><span class='s'>&quot;Maximum length of string to include? &quot;</span><span class='p'>);</span>
+    <span class='kt'>int</span> <span class='n'>maxLength</span> <span class='p'>=</span> <span class='kt'>int</span><span class='p'>.</span><span class='n'>Parse</span><span class='p'>(</span><span class='n'>Console</span><span class='p'>.</span><span class='n'>ReadLine</span><span class='p'>());</span>
+
+    <span class='n'>VariableLengthMatcher</span> <span class='n'>matcher</span> <span class='p'>=</span> <span class='k'>new</span> <span class='n'>VariableLengthMatcher</span><span class='p'>(</span><span class='n'>maxLength</span><span class='p'>);</span>
+    <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>predicate</span> <span class='p'>=</span> <span class='n'>matcher</span><span class='p'>.</span><span class='n'>Match</span><span class='p'>;</span>
+    <span class='n'>IList</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>shortWords</span> <span class='p'>=</span> <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Filter</span><span class='p'>(</span><span class='n'>SampleData</span><span class='p'>.</span><span class='n'>Words</span><span class='p'>,</span> <span class='n'>predicate</span><span class='p'>);</span>
+    <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Dump</span><span class='p'>(</span><span class='n'>shortWords</span><span class='p'>);</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>采用anonymous function和lamda expression的写法则可以这样改。</p>
+<div class='highlight'><pre><code class='c#'><span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>Console</span><span class='p'>.</span><span class='n'>Write</span><span class='p'>(</span><span class='s'>&quot;Maximum length of string to include? &quot;</span><span class='p'>);</span>
+    <span class='kt'>int</span> <span class='n'>maxLength</span> <span class='p'>=</span> <span class='kt'>int</span><span class='p'>.</span><span class='n'>Parse</span><span class='p'>(</span><span class='n'>Console</span><span class='p'>.</span><span class='n'>ReadLine</span><span class='p'>());</span>
+    
+    <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>predicate</span> <span class='p'>=</span> <span class='k'>delegate</span> <span class='p'>(</span><span class='kt'>string</span> <span class='n'>item</span><span class='p'>)</span> <span class='p'>{</span> <span class='k'>return</span> <span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='n'>maxLength</span><span class='p'>;</span> <span class='p'>};</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>shortWords</span> <span class='p'>=</span> <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Filter</span><span class='p'>(</span><span class='n'>sample</span><span class='p'>,</span> <span class='n'>predicate</span><span class='p'>);</span>
+    <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Dump</span><span class='p'>(</span><span class='n'>shortWords</span><span class='p'>);</span>
+<span class='p'>}</span>
+</code></pre></div><div class='highlight'><pre><code class='c#'><span class='k'>static</span> <span class='k'>void</span> <span class='nf'>Main</span><span class='p'>()</span>
+<span class='p'>{</span>
+    <span class='n'>Console</span><span class='p'>.</span><span class='n'>Write</span><span class='p'>(</span><span class='s'>&quot;Maximum length of string to include? &quot;</span><span class='p'>);</span>
+    <span class='kt'>int</span> <span class='n'>maxLength</span> <span class='p'>=</span> <span class='kt'>int</span><span class='p'>.</span><span class='n'>Parse</span><span class='p'>(</span><span class='n'>Console</span><span class='p'>.</span><span class='n'>ReadLine</span><span class='p'>());</span>
+    
+    <span class='n'>Predicate</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>predicate</span> <span class='p'>=</span> <span class='n'>item</span> <span class='p'>=&gt;</span> <span class='n'>item</span><span class='p'>.</span><span class='n'>Length</span> <span class='p'>&lt;=</span> <span class='n'>maxLength</span><span class='p'>;</span>
+    <span class='n'>List</span><span class='p'>&lt;</span><span class='kt'>string</span><span class='p'>&gt;</span> <span class='n'>shortWords</span> <span class='p'>=</span> <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Filter</span><span class='p'>(</span><span class='n'>sample</span><span class='p'>,</span> <span class='n'>predicate</span><span class='p'>);</span>
+    <span class='n'>ListUtil</span><span class='p'>.</span><span class='n'>Dump</span><span class='p'>(</span><span class='n'>shortWords</span><span class='p'>);</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>以上便是利用了closure，包装一些行为使之可以像object一样传递的同时还能访问周围的context。</p>
+
+<h1 id='cclosure'>C中的closure</h1>
+
+<p>考虑如下的一段代码。</p>
+<div class='highlight'><pre><code class='c'><span class='cp'>#include &lt;stdio.h&gt;</span>
+<span class='cp'>#include &lt;assert.h&gt;</span>
+
+<span class='kt'>FILE</span> <span class='o'>*</span><span class='n'>log_func_call</span><span class='p'>;</span>
+
+<span class='k'>typedef</span> <span class='nf'>int</span> <span class='p'>(</span><span class='o'>*</span><span class='kt'>func_t</span><span class='p'>)(</span><span class='kt'>int</span> <span class='n'>arg</span><span class='p'>);</span>
+
+<span class='kt'>int</span> <span class='nf'>foo</span><span class='p'>(</span><span class='kt'>int</span> <span class='n'>a</span><span class='p'>)</span> <span class='p'>{</span>
+    <span class='k'>return</span> <span class='n'>a</span> <span class='o'>+</span> <span class='mi'>1</span><span class='p'>;</span>
+<span class='p'>}</span>
+
+<span class='kt'>func_t</span> <span class='nf'>create_wrap_function</span><span class='p'>(</span><span class='kt'>func_t</span> <span class='n'>f</span><span class='p'>)</span> <span class='p'>{</span>
+    <span class='kt'>int</span> <span class='n'>wrapped</span><span class='p'>(</span><span class='kt'>int</span> <span class='n'>arg</span><span class='p'>)</span> <span class='p'>{</span>
+        <span class='c1'>// call original function</span>
+        <span class='kt'>int</span> <span class='n'>val</span> <span class='o'>=</span> <span class='n'>f</span><span class='p'>(</span><span class='n'>arg</span><span class='p'>);</span>
+        <span class='n'>fprintf</span><span class='p'>(</span><span class='n'>log_func_call</span><span class='p'>,</span> <span class='s'>&quot;arg: %d ret: %d&quot;</span><span class='p'>,</span> <span class='n'>arg</span><span class='p'>,</span> <span class='n'>val</span><span class='p'>);</span>
+        <span class='k'>return</span> <span class='n'>val</span><span class='p'>;</span>
+    <span class='p'>}</span>
+    <span class='k'>return</span> <span class='n'>wrapped</span><span class='p'>;</span>
+<span class='p'>}</span>
+
+<span class='kt'>int</span> <span class='nf'>main</span><span class='p'>(</span><span class='kt'>int</span> <span class='n'>argc</span><span class='p'>,</span> <span class='kt'>char</span><span class='o'>*</span> <span class='n'>argv</span><span class='p'>[])</span> <span class='p'>{</span>
+    <span class='n'>assert</span><span class='p'>(</span><span class='n'>log_func_call</span> <span class='o'>=</span> <span class='n'>fopen</span><span class='p'>(</span><span class='s'>&quot;log_func_call&quot;</span><span class='p'>,</span> <span class='s'>&quot;w&quot;</span><span class='p'>));</span>
+    <span class='kt'>func_t</span> <span class='n'>bar</span> <span class='o'>=</span> <span class='n'>create_wrap_function</span><span class='p'>(</span><span class='n'>foo</span><span class='p'>);</span>
+    <span class='n'>printf</span><span class='p'>(</span><span class='s'>&quot;%d</span><span class='se'>\n</span><span class='s'>&quot;</span><span class='p'>,</span> <span class='n'>bar</span><span class='p'>(</span><span class='mi'>2</span><span class='p'>));</span>
+
+    <span class='k'>return</span> <span class='mi'>0</span><span class='p'>;</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>这段代码是可以编译通过的，意思是，我需要introspect某个函数（这里是foo），每次这个函数被调用时，将其调用参数和返回值记录到一个文件里。这段代码里加入了一个名为create_wrap_function的新函数，里面包含一个叫做wrapped的<a href='http://gcc.gnu.org/onlinedocs/gcc/Nested-Functions.html'>nested function</a>,在这个wrapped里面记录下函数的调用参数和返回值，然后直接返回这个nested function。之所以说这是一个closure是因为wrapped访问了create_wrap_function中的context（函数参数f）。</p>
+
+<p>对于C#我们很难分析其closure的实现，但是对于C来说，还是有可能的。下面我们就来分析一下gcc对于这个feature的实现。</p>
+
+<p>编译这段代码gcc ./wrapped_function.c -g -O0 -o wrapped_function，用nm查看其中的symbol，发现符号表中存在wrapped这个entry，且type为t，说明其相当于一个存在于text section的正常函数。</p>
+
+<pre><code>0000000000600bc0 A _edata
+0000000000600bd0 A _end
+000000000040079c T _fini
+0000000000400470 T _init
+00000000004004e0 T _start
+000000000040050c t call_gmon_start
+0000000000600bc0 b completed.6092
+000000000040063a T create_wrap_function
+0000000000600bb0 W data_start
+0000000000400530 t deregister_tm_clones
+00000000004005ec T foo
+                 U fopen@@GLIBC_2.2.5
+                 U fprintf@@GLIBC_2.2.5
+00000000004005c0 t frame_dummy
+0000000000600bc8 B log_func_call
+000000000040067e T main
+                 U printf@@GLIBC_2.2.5
+0000000000400560 t register_tm_clones
+00000000004005fb t wrapped.2184              &lt;=========</code></pre>
+
+<p>照理来说，变量bar的值应该就等于wrapped这个符号的地址0x4005fb，可是真的是这样么？将bar的值打印出来，发现是形如0x7fff4a4e9878的一个值，竟然是一个栈上的地址！为什么会这样呢？在栈上的这段代码都做了些什么工作呢？</p>
+
+<p>由于这段代码在栈上，只能在运行的时候看到，于是我们祭出gdb，disassemble栈上的这个地址得到如下代码。</p>
+
+<pre><code>(gdb) p bar
+$1 = (func_t) 0x7fffffffe348
+(gdb) x/5i bar
+    0x7fffffffe348:      mov    $0x4005fb,%r11d
+    0x7fffffffe34e:      movabs $0x7fffffffe340,%r10
+    0x7fffffffe358:      rex.WB jmpq *%r11
+    0x7fffffffe35b:      nop
+    0x7fffffffe35c:      add    %al,(%rax)
+(gdb) </code></pre>
+
+<p>可以看到这其实是一段trampoline code，第一条mov将wrapped的真正地址放到了r11当中，然后在第三条汇编用一个indirect jump跳转过去，那么第二条mov将一个绝对值（也是一个栈上的地址）放入r10中又是在做神马呢？继续看wrapped的反汇编。</p>
+
+<pre><code>(gdb) x/20i 0x4005fb
+    0x4005fb &lt;wrapped&gt;:  push   %rbp
+    0x4005fc &lt;wrapped+1&gt;:        mov    %rsp,%rbp
+    0x4005ff &lt;wrapped+4&gt;:        sub    $0x20,%rsp
+    0x400603 &lt;wrapped+8&gt;:        mov    %edi,-0x14(%rbp)
+    0x400606 &lt;wrapped+11&gt;:       mov    %r10,%rax                  &lt;========
+    0x400609 &lt;wrapped+14&gt;:       mov    (%rax),%rax                &lt;========
+    0x40060c &lt;wrapped+17&gt;:       mov    -0x14(%rbp),%edx
+    0x40060f &lt;wrapped+20&gt;:       mov    %edx,%edi
+    0x400611 &lt;wrapped+22&gt;:       callq  *%rax                      &lt;========
+    0x400613 &lt;wrapped+24&gt;:       mov    %eax,-0x4(%rbp)
+    0x400616 &lt;wrapped+27&gt;:       mov    0x2005db(%rip),%rax        # 0x600bf8 &lt;log_func_call&gt;
+    0x40061d &lt;wrapped+34&gt;:       mov    -0x4(%rbp),%ecx
+    0x400620 &lt;wrapped+37&gt;:       mov    -0x14(%rbp),%edx
+    0x400623 &lt;wrapped+40&gt;:       mov    $0x4007e0,%esi
+    0x400628 &lt;wrapped+45&gt;:       mov    %rax,%rdi
+    0x40062b &lt;wrapped+48&gt;:       mov    $0x0,%eax
+    0x400630 &lt;wrapped+53&gt;:       callq  0x4004c0 &lt;fprintf@plt&gt;
+    0x400635 &lt;wrapped+58&gt;:       mov    -0x4(%rbp),%eax
+    0x400638 &lt;wrapped+61&gt;:       leaveq
+    0x400639 &lt;wrapped+62&gt;:       retq
+(gdb) </code></pre>
+
+<p>可以看到wrapped将r10的内容拷到了rax当中，并解引用，随后indirect call跳转，很容易猜到这应该是create_wrap_function传入的参数f（也就是foo的地址），原来nested function是采用这样的方式来传递context的，栈帧型构大致如下。</p>
+
+<pre><code>0x7fffffffe35b
+      |
+      |   old rbp
+|_____|___________________|     &lt;------ %%rbp(0x7fffffffe360)
+|    \|/                  | 
+|     ____________________|     
+|_____|                   |
+|  trampoline code        |
+|  (mov, mov, jmp)        |
+|_________________________|     &lt;------ 0x7fffffffe348
+|  context of wrapper     |
+|_________________________|     &lt;------ 0x7fffffffe340</code></pre>
+
+<p>这么奇怪的栈帧是谁设置的呢，不难想到应该是create_wrap_function，继续看它的汇编。</p>
+
+<pre><code>(gdb) p create_wrap_function 
+$2 = {func_t (func_t)} 0x40063a &lt;create_wrap_function&gt;
+(gdb) x/18i 0x40063a
+    0x40063a &lt;create_wrap_function&gt;:     push   %rbp
+    0x40063b &lt;create_wrap_function+1&gt;:   mov    %rsp,%rbp
+    0x40063e &lt;create_wrap_function+4&gt;:   mov    %rdi,-0x28(%rbp)
+    0x400642 &lt;create_wrap_function+8&gt;:   mov    -0x28(%rbp),%rax
+    0x400646 &lt;create_wrap_function+12&gt;:  mov    %rax,-0x20(%rbp)
+    0x40064a &lt;create_wrap_function+16&gt;:  lea    -0x20(%rbp),%rax
+    0x40064e &lt;create_wrap_function+20&gt;:  add    $0x8,%rax
+    0x400652 &lt;create_wrap_function+24&gt;:  lea    -0x20(%rbp),%rdx
+    0x400656 &lt;create_wrap_function+28&gt;:  mov    $0x4005fb,%ecx
+    0x40065b &lt;create_wrap_function+33&gt;:  movw   $0xbb41,(%rax)
+    0x400660 &lt;create_wrap_function+38&gt;:  mov    %ecx,0x2(%rax)
+    0x400663 &lt;create_wrap_function+41&gt;:  movw   $0xba49,0x6(%rax)
+    0x400669 &lt;create_wrap_function+47&gt;:  mov    %rdx,0x8(%rax)
+    0x40066d &lt;create_wrap_function+51&gt;:  movl   $0x90e3ff49,0x10(%rax)
+    0x400674 &lt;create_wrap_function+58&gt;:  lea    -0x20(%rbp),%rax
+    0x400678 &lt;create_wrap_function+62&gt;:  add    $0x8,%rax
+    0x40067c &lt;create_wrap_function+66&gt;:  pop    %rbp
+    0x40067d &lt;create_wrap_function+67&gt;:  retq
+(gdb)</code></pre>
+
+<p>可以看到create_wrap_function在prologue后就将参数f保存到了-0x20(%rbp)处，接下来一串奇怪的mov指令就是在栈上构造trampoline code，最后返回trampoline code的地址，思路还是比较清晰的。</p>
+
+<p>gcc internal里面有一段对于<a href='http://gcc.gnu.org/onlinedocs/gccint/Trampolines.html#Trampolines'>trampoline for nested function</a>的介绍，可以作为参考。</p>
+
+<p>最后还有两个问题，一个是这些在栈上的精妙构造之后不会被破坏么？答案是肯定的，在调用bar之前加一个dummy function，不干别的，直接将一个比较大的局部变量清零，调用bar的时候就会segmentation fault。原因很明显，它将trampoline code抹掉了。。。这说明用gcc nested function实现的closure是不完善的。</p>
+<div class='highlight'><pre><code class='c'><span class='kt'>void</span> <span class='nf'>dummy_function</span><span class='p'>(</span><span class='kt'>void</span><span class='p'>)</span> <span class='p'>{</span>
+    <span class='kt'>char</span> <span class='n'>tmp</span><span class='p'>[</span><span class='mh'>0x100</span><span class='p'>];</span>        
+    <span class='n'>memset</span><span class='p'>(</span><span class='n'>tmp</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='k'>sizeof</span><span class='p'>(</span><span class='n'>tmp</span><span class='p'>));</span>
+<span class='p'>}</span>
+</code></pre></div>
+<p>第二个问题是，为什么栈上的代码可以执行呢，x86_64不是有禁止执行位（NX bit）么？</p>
+
+<p>答案是。。。还真可以执行。。。下图有真相。。。（正常进程的栈确实是不可执行的，出现这种情况难道是ld在链接的时候做了手脚？）</p>
+
+<pre><code>[20] 1J 21:51:21 testvm:~/test # ps -ef|grep wrap
+root     49492 49232  0 21:50 pts/1    00:00:00 cgdb ./wrap-function
+root     49493 49492  0 21:50 pts/3    00:00:00 gdb --nw --annotate=2 -x /root/.tgdb/a2_gdb_init ./wrap-function
+root     49495 49493  0 21:50 pts/4    00:00:00 /root/test/wrap-function
+root     49501 49232  0 21:51 pts/1    00:00:00 grep --colour wrap
+1J 21:51:27 testvm:~/test # cat /proc/49495/maps 
+00400000-00401000 r-xp 00000000 08:01 137681                             /root/test/wrap-function
+00600000-00601000 rwxp 00000000 08:01 137681                             /root/test/wrap-function
+00601000-00622000 rwxp 00000000 00:00 0                                  [heap]
+7ffff7a53000-7ffff7bd3000 r-xp 00000000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+7ffff7bd3000-7ffff7dd3000 ---p 00180000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+7ffff7dd3000-7ffff7dd7000 r-xp 00180000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+7ffff7dd7000-7ffff7dd8000 rwxp 00184000 08:01 391699                     /lib/x86_64-linux-gnu/libc-2.13.so
+7ffff7dd8000-7ffff7ddd000 rwxp 00000000 00:00 0 
+7ffff7ddd000-7ffff7dfd000 r-xp 00000000 08:01 391702                     /lib/x86_64-linux-gnu/ld-2.13.so
+7ffff7fe6000-7ffff7fe9000 rwxp 00000000 00:00 0 
+7ffff7ff8000-7ffff7ffb000 rwxp 00000000 00:00 0 
+7ffff7ffb000-7ffff7ffc000 r-xp 00000000 00:00 0                          [vdso]
+7ffff7ffc000-7ffff7ffd000 r-xp 0001f000 08:01 391702                     /lib/x86_64-linux-gnu/ld-2.13.so
+7ffff7ffd000-7ffff7ffe000 rwxp 00020000 08:01 391702                     /lib/x86_64-linux-gnu/ld-2.13.so
+7ffff7ffe000-7ffff7fff000 rwxp 00000000 00:00 0 
+7ffffffde000-7ffffffff000 rwxp 00000000 00:00 0                          [stack]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]</code></pre>
+    <hr>
+    <div class="pagination">
+      <ul>
+      
+        <li class="prev"><a href="/lessons/2013/11/18/Welcome" title="Welcome">&larr; Previous</a></li>
+      
+        <li><a href="/archive.html">Archive</a></li>
+      
+        <li class="next disabled"><a>Next &rarr;</a>
+      
+      </ul>
+    </div>
+    <hr>
+    <div class="post-sharing">
+    
+
+  
+  		<!-- Place this tag where you want the +1 button to render. -->
+<div class="g-plusone" data-annotation="inline" data-width="300"></div>
+<!-- Place this tag after the last +1 button tag. -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/plusone.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+
+<script src="//platform.linkedin.com/in.js" type="text/javascript">
+ lang: en_US
+ </script>
+ <script type="IN/Share" data-url="http://cwndmiao.github.io/programming%20language/2013/11/20/Closure_in_C%23_and_C" data-counter="right"></script>
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "//connect.facebook.net/zh_CN/all.js#xfbml=1";
+    fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+<div class="fb-like" data-href="http://cwndmiao.github.io/programming%20language/2013/11/20/Closure_in_C%23_and_C" data-layout="standard" data-action="like" data-show-faces="true" data-share="true"></div>
+
+
+	
+
+
+
+    </div>
+    <hr>
+    
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'cwndmiaogithubio'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+  </div>
+  
+  <div class="span4">
+    <h4>Published</h4>
+    <div class="date"><span>20 November 2013</span></div>
+
+  
+    <h4>Tags</h4>
+    <ul class="tag_box">
+    
+    
+
+
+  
+     
+    	<li><a href="/tags.html#closure-ref">closure <span>1</span></a></li>
+     
+    	<li><a href="/tags.html#gcc internal-ref">gcc internal <span>1</span></a></li>
+    
+  
+
+
+
+    </ul>
+    
+  </div>
+</div>
+
+
+      </div>
+
+      <footer>
+        <p>&copy; Cwndmiao 2012 
+          with help from <a href="http://jekyllbootstrap.com" target="_blank" title="The Definitive Jekyll Blogging Framework">Jekyll Bootstrap</a>
+          and <a href="http://twitter.github.com/bootstrap/" target="_blank">Twitter Bootstrap</a>
+        </p>
+      </footer>
+
+    </div> <!-- /container -->
+
+    
+  </body>
+</html>
+
