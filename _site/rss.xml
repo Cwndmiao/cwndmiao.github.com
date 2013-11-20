@@ -5,8 +5,8 @@
         <description>消逝的风 - Cwndmiao</description>
         <link>http://cwndmiao.github.io</link>
         <link>http://cwndmiao.github.io</link>
-        <lastBuildDate>2013-11-20T22:13:35+08:00</lastBuildDate>
-        <pubDate>2013-11-20T22:13:35+08:00</pubDate>
+        <lastBuildDate>2013-11-20T22:17:29+08:00</lastBuildDate>
+        <pubDate>2013-11-20T22:17:29+08:00</pubDate>
         <ttl>1800</ttl>
 
 
@@ -292,8 +292,8 @@ root     49501 49232  0 21:51 pts/1    00:00:00 grep --colour wrap
 7ffff7ffe000-7ffff7fff000 rwxp 00000000 00:00 0 
 7ffffffde000-7ffffffff000 rwxp 00000000 00:00 0                          [stack]
 ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]&lt;/code&gt;&lt;/pre&gt;</description>
-                <link>http://cwndmiao.github.io/programming%20language/2013/11/20/Closure_in_C%23_and_C</link>
-                <guid>http://cwndmiao.github.io/programming%20language/2013/11/20/Closure_in_C#_and_C</guid>
+                <link>http://cwndmiao.github.io/programming%20language/2013/11/20/Closure</link>
+                <guid>http://cwndmiao.github.io/programming%20language/2013/11/20/Closure</guid>
                 <pubDate>2013-11-20T00:00:00+08:00</pubDate>
         </item>
 

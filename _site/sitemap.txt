@@ -8,6 +8,6 @@ http://cwndmiao.github.io/pages.html
 http://cwndmiao.github.io/archive.html
 http://cwndmiao.github.io/rss.xml
 
-http://cwndmiao.github.io/programming%20language/2013/11/20/Closure_in_C%23_and_C
+http://cwndmiao.github.io/programming%20language/2013/11/20/Closure
 http://cwndmiao.github.io/lessons/2013/11/18/Welcome
 http://cwndmiao.github.io/lessons/2011/12/29/jekyll-introduction
