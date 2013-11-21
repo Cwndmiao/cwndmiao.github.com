@@ -5,10 +5,22 @@
         <description>消逝的风 - Cwndmiao</description>
         <link>http://cwndmiao.github.io</link>
         <link>http://cwndmiao.github.io</link>
-        <lastBuildDate>2013-11-20T22:17:29+08:00</lastBuildDate>
-        <pubDate>2013-11-20T22:17:29+08:00</pubDate>
+        <lastBuildDate>2013-11-21T15:36:08+08:00</lastBuildDate>
+        <pubDate>2013-11-21T15:36:08+08:00</pubDate>
         <ttl>1800</ttl>
 
+
+        <item>
+                <title>Git备忘</title>
+                <description>&lt;h1 id='git_rebase'&gt;强大的git rebase&lt;/h1&gt;
+
+&lt;p&gt;有一个台湾人写的&lt;a href='http://blog.yorkxin.org/posts/2011/07/29/git-rebase/'&gt;博客&lt;/a&gt;，详细介绍了&lt;a href='https://www.kernel.org/pub/software/scm/git/docs/git-rebase.html'&gt;git rebase&lt;/a&gt;。简单来说，整个repository的commit构成了一棵巨大的树（其实这里有一点不严谨，因为其中可能有环），某一个branch的log就相当于这棵树的一个节点到根的遍历，那么git rebase就相当于把当前branch的某一段commit嫁接到树中的一个其他节点。&lt;/p&gt;
+
+&lt;p&gt;git rebase还有一个interactive mode，甚至可以修改已经提交的commit（修改commit message，调整commit的顺序甚至修改commit的内容），非常强大！&lt;/p&gt;</description>
+                <link>http://cwndmiao.github.io/programming%20tools/2013/11/21/Git</link>
+                <guid>http://cwndmiao.github.io/programming%20tools/2013/11/21/Git</guid>
+                <pubDate>2013-11-21T00:00:00+08:00</pubDate>
+        </item>
 
         <item>
                 <title>Closure in C# and C</title>
